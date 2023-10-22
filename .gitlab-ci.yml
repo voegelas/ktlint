@@ -1,0 +1,26 @@
+---
+image:
+  name: voegelas/debian-java
+  pull_policy: if-not-present
+
+build:
+  stage: build
+  rules:
+    - if: $CI_COMMIT_TAG =~ /-intellij_idea$/
+      when: always
+    - when: never
+  timeout: 2 hours
+  script:
+    - |
+      sed -i -E '/^VERSION_NAME=/s/(-SNAPSHOT)?$/-SNAPSHOT/' gradle.properties
+      sed -i -E '/^org.gradle.(jvmargs|parallel|caching|configuration-cache)[=.]/d' gradle.properties
+      if [ -n "$http_proxy" ]; then
+        echo "systemProp.https.proxyHost=$(echo $http_proxy | awk -F '[:/]+' '{print $2}')" >>gradle.properties
+        echo "systemProp.https.proxyPort=$(echo $http_proxy | awk -F '[:/]+' '{print $3}')" >>gradle.properties
+      fi
+    - ./gradlew ktlintCliFiles
+  artifacts:
+    name: ktlint
+    paths:
+      - ktlint-cli/build/run/ktlint
+    expire_in: 3 hrs
